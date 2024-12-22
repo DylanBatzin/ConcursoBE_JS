@@ -44,7 +44,6 @@ export const postProduct = async(req, res) => {
     }
 
 }
-
 export const  putProduct = async(req, res) => {
     const pool = await conection()
     try {
@@ -67,6 +66,7 @@ export const  putProduct = async(req, res) => {
         res.status(500).json({message: "Error al editar producto"})
     }
 }
+
 
 export const deleteProduct = async (req, res) => {
     const pool = await conection()

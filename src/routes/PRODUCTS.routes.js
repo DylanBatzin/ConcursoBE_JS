@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getProducts, getProduct, postProduct, putProduct, deleteProduct } from "../controllers/PRODUCTS.controllers.js";
+import { getProducts, getProduct, postProduct, deleteProduct, putProduct } from "../controllers/PRODUCTS.controllers.js";
 import { authenticateJWT } from "../middleware/authenticate.js";
 import { uploadSingleImage, uploadMultipleImages } from "../middleware/multer.js";
 
@@ -9,9 +9,9 @@ router.get("/products", authenticateJWT,getProducts);
 
 router.get("/products/:Uuid", authenticateJWT, getProduct);
 
-router.post("/products", uploadSingleImage, postProduct);
+router.post("/products", authenticateJWT,uploadSingleImage, postProduct);
 
-router.put("/products/:Uuid",  uploadSingleImage, putProduct);
+router.put("/products/:ProductUuid", authenticateJWT,uploadSingleImage, putProduct);
 
 router.delete("/products/:Uuid", authenticateJWT, deleteProduct);
 
