@@ -9,9 +9,9 @@ router.get("/products", authenticateJWT,getProducts);
 
 router.get("/products/:Uuid", authenticateJWT, getProduct);
 
-router.post("/products", authenticateJWT,uploadSingleImage, postProduct);
+router.post("/products",authenticateJWT,uploadSingleImage, postProduct);
 
-router.put("/products/:ProductUuid", authenticateJWT,uploadSingleImage, putProduct);
+router.put("/products/:ProductUuid",authenticateJWT,uploadSingleImage, putProduct);
 
 router.delete("/products/:Uuid", authenticateJWT, deleteProduct);
 

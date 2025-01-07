@@ -19,3 +19,12 @@ export const authenticateJWT = (req, res, next) => {
         res.status(401).json({ message: "Token no proporcionado" });
     }
 };
+
+export const authorizeRole = (requiredRole) => {
+    return (req, res, next) => {
+        if (!req.user || req.user.role !== requiredRole) {
+            return res.status(403).json({ message: "Acceso denegado. Rol insuficiente." });
+        }
+        next();
+    };
+};

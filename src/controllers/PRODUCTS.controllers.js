@@ -3,10 +3,23 @@ import mssql from 'mssql';
 
 
 export const getProducts = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request().query('SELECT * FROM PRODUCTS')
-    res.json(result.recordset);
-}
+    try {
+        const pool = await conection();
+        const result = await pool.request().query('SELECT * FROM PRODUCTS');
+        const products = result.recordset.map((product) => ({
+          ...product,
+          Image: product.Image
+            ? `data:image/jpeg;base64,${Buffer.from(product.Image).toString('base64')}`
+            : null, 
+        }));
+    
+        res.json(products);
+      } catch (error) {
+        console.error('Error al obtener productos:', error);
+        res.status(500).json({ message: 'Error al obtener productos' });
+      }
+    };
+
 
 export const getProduct = async (req, res) => {    
     const pool = await conection()

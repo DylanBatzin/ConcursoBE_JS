@@ -106,3 +106,27 @@ export const login = async (req, res) => {
         res.status(500).json({ message: "Error al autenticar usuario" });
     }
 };
+
+export const getUserByEmail = async (req, res) => {
+    const pool = await conection();
+    const { Email } = req.body; 
+
+    if (!Email) {
+        return res.status(400).json({ message: "El campo Email es obligatorio." });
+    }
+
+    try {
+        const result = await pool.request()
+            .input('Email', Email) 
+            .query('SELECT * FROM DA.USERS WHERE Email = @Email'); 
+
+        if (result.recordset.length > 0) {
+            res.json(result.recordset[0]); 
+        } else {
+            res.status(404).json({ message: "Usuario no encontrado" }); 
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener el usuario por email" }); 
+    }
+};

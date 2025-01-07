@@ -42,7 +42,7 @@ export const  putRole = async(req, res) => {
         await pool.request()
         .input('Uuid', req.params.Uuid)
         .input('Name', req.body.Name)
-        .query('EXEC DA.UPDATEROLE   @Uuid = @Uuid, @Name = @Name')
+        .query('EXEC DA.UPDATEROLE   @RoleUuid = @Uuid, @Name = @Name')
         res.status(200).json({message: "Rol actualizado"})
     }
     catch(error) {
