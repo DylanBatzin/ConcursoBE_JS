@@ -1,66 +1,88 @@
-import {conection} from "../database/conection.js";
+import Status from "../models/ModelStatus.js";
 
-
-export const getStatus = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request().query('SELECT * FROM STATUS')
-    res.json(result.recordset);
-}
-
-export const getStatusById = async (req, res) => {    
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('SELECT * FROM STATUS WHERE Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.recordset.length > 0) {
-        res.json(result.recordset[0]);
+export const getStatus = async (req, res) =>{
+    try {
+        const status = await Status.findAll();
+        res.json(status);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener los estatus" });
     }
-    else {
-        res.status(404).json({message: "Estatus no encontrado"})
+};
+
+
+export const getStatusById = async (req, res) => {
+    try {
+        const status = await Status.findOne({
+            where: { Uuid: req.params.Uuid }
+        });
+
+        if (status) {
+            res.json(status);
+        } else {
+            res.status(404).json({ message: "Estatus no encontrado" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener el estatus" });
     }
-}
+};
 
 export const postStatus = async(req, res) => {
-    const pool = await conection()
     try {
-        await pool.request()
-        .input('Name', req.body.Name)
-        .query('EXEC DA.INSERTESTATUS   @Name = @Name')
-        res.status(200).json({message: "Estatus creado"})
-    }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al crear estatus"})
-    }
+        const { Name } = req.body;
 
-}
+        const newStatus = await Status.create({
+            Name,
+            CreatedAt: new Date(),
+            UpdateAt: new Date()
+        });
+
+        res.status(201).json({ message: "Estatus creado", status: newStatus });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al crear el estatus" });
+    }
+};
 
 export const  putStatus = async(req, res) => {
-    const pool = await conection()
     try {
-        await pool.request()
-        .input('Uuid', req.params.Uuid)
-        .input('Name', req.body.Name)
-        .query('EXEC DA.UPDATESTATUS   @Uuid = @Uuid, @Name = @Name')
-        res.status(200).json({message: "Estatus actualizado"})
-    }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al editar estatus"})
-    }
+        const { Uuid } = req.params;
+        const { Name } = req.body;
 
-}
+        const status = await Status.findOne({ where: { Uuid } });
+
+        if (!status) {
+            return res.status(404).json({ message: "Estatus no encontrado" });
+        }
+
+        await status.update({
+            Name,
+            UpdateAt: new Date()
+        });
+
+        res.json({ message: "Estatus actualizado correctamente", status });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al actualizar el estatus" });
+    }
+};
 
 export const deleteStatus = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('delete from STATUS where Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.rowsAffected[0] === 0) {
-        res.status(404).json({message: "Estatus no encontrado"})
+    try {
+        const { Uuid } = req.params;
+
+        const status = await Status.findOne({ where: { Uuid } });
+
+        if (!status) {
+            return res.status(404).json({ message: "Estatus no encontrado" });
+        }
+
+        await status.destroy();
+
+        res.json({ message: "Estatus eliminado correctamente" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al eliminar el estatus" });
     }
-    
-    return res.status(200).json({message: "Estatus eliminado"})     
-}
+};

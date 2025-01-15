@@ -1,65 +1,93 @@
-import e from "express";
-import {conection} from "../database/conection.js";
+import Role from "../models/ModelRole.js";
 
 export const getRoles = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request().query('SELECT * FROM ROLES')
-    res.json(result.recordset);
-}
-
-export const getRole = async (req, res) => {    
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('SELECT * FROM ROLES WHERE Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.recordset.length > 0) {
-        res.json(result.recordset[0]);
-    }
-    else {
-        res.status(404).json({message: "Rol no encontrado"})
-    }
-}
-
-export const postRole = async(req, res) => {
-    const pool = await conection()
     try {
-        await pool.request()
-        .input('Name', req.body.Name)
-        .query('EXEC DA.INSERTROLE   @Name = @Name')
-        res.status(200).json({message: "Rol creado"})
+        const roles = await Role.findAll();
+        res.json(roles);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener los roles" });
     }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al crear rol"})
-    }
+};
 
-}
-
-export const  putRole = async(req, res) => {
-    const pool = await conection()
+export const getRole = async (req, res) => {
     try {
-        await pool.request()
-        .input('Uuid', req.params.Uuid)
-        .input('Name', req.body.Name)
-        .query('EXEC DA.UPDATEROLE   @RoleUuid = @Uuid, @Name = @Name')
-        res.status(200).json({message: "Rol actualizado"})
+        const role = await Role.findOne({
+            where: { Uuid: req.params.Uuid }
+        });
+
+        if (role) {
+            res.json(role);
+        } else {
+            res.status(404).json({ message: "Rol no encontrado" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener el rol" });
     }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al editar rol"})
+};
+
+export const postRole = async (req, res) => {
+    try {
+        const { Name } = req.body;
+
+        const newRole = await Role.create({
+            Name,
+            CreatedAt: new Date(),
+            UpdateAt: new Date()
+        });
+
+        res.status(201).json({ 
+            message: "Rol creado", 
+            role: newRole 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al crear el rol" });
     }
-}
+};
+
+export const putRole = async (req, res) => {
+    try {
+        const { Uuid } = req.params;
+        const { Name } = req.body;
+
+        const role = await Role.findOne({ where: { Uuid } });
+
+        if (!role) {
+            return res.status(404).json({ message: "Rol no encontrado" });
+        }
+
+        await role.update({
+            Name,
+            UpdateAt: new Date()
+        });
+
+        res.json({ 
+            message: "Rol actualizado correctamente", 
+            role 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al actualizar el rol" });
+    }
+};
 
 export const deleteRole = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('delete from ROLES where Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.rowsAffected[0] === 0) {
-        res.status(404).json({message: "Rol no encontrado"})
+    try {
+        const { Uuid } = req.params;
+
+        const role = await Role.findOne({ where: { Uuid } });
+
+        if (!role) {
+            return res.status(404).json({ message: "Rol no encontrado" });
+        }
+
+        await role.destroy();
+
+        res.json({ message: "Rol eliminado correctamente" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al eliminar el rol" });
     }
-    
-    return res.status(200).json({message: "Rol eliminado"})
-}
+};

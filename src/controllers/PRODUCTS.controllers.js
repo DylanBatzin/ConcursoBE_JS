@@ -1,95 +1,146 @@
-import {conection} from "../database/conection.js";
-import mssql from 'mssql';
-
+import Product from "../models/ModelProduct.js";
 
 export const getProducts = async (req, res) => {
     try {
-        const pool = await conection();
-        const result = await pool.request().query('SELECT * FROM PRODUCTS');
-        const products = result.recordset.map((product) => ({
-          ...product,
-          Image: product.Image
-            ? `data:image/jpeg;base64,${Buffer.from(product.Image).toString('base64')}`
-            : null, 
-        }));
-    
-        res.json(products);
-      } catch (error) {
-        console.error('Error al obtener productos:', error);
-        res.status(500).json({ message: 'Error al obtener productos' });
-      }
-    };
+        const products = await Product.findAll();
+        
+        const transformedProducts = products.map(product => {
+            const plainProduct = product.get({ plain: true });
+            return {
+                ...plainProduct,
+                Image: plainProduct.Image
+                    ? `data:image/jpeg;base64,${Buffer.from(plainProduct.Image).toString('base64')}`
+                    : null,
+            };
+        });
 
+        res.json(transformedProducts);
+    } catch (error) {
+        console.error('Error al obtener productos:', error);
+        res.status(500).json({ message: "Error al obtener los productos" });
+    }
+};
 
 export const getProduct = async (req, res) => {    
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('SELECT * FROM PRODUCTS WHERE Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.recordset.length > 0) {
-        res.json(result.recordset[0]);
-    }
-    else {
-        res.status(404).json({message: "Producto no encontrado"})
+    try {
+        const product = await Product.findOne({
+            where: {
+                Uuid: req.params.Uuid
+            }
+        });
+        
+        if (!product) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+        
+        res.json(product);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al obtener producto" });
     }
 }
 
 export const postProduct = async(req, res) => {
-    const pool = await conection()
     try {
         const image = req.file?.buffer;
-        await pool.request()
-        .input('Code', req.body.Code)
-        .input('Name', req.body.Name)
-        .input('Brand', req.body.Brand)
-        .input('stock', req.body.stock)
-        .input('price', req.body.price)
-        .input('Image', mssql.VarBinary,image)
-        .input('Category', req.body.Category)
-        .input('Status', req.body.Status)
-        .query('EXEC DA.INSERTPRODUCT @Code = @Code, @Name = @Name, @Brand = @Brand, @stock = @stock, @price = @price, @Image = @Image, @Category = @Category, @Status = @Status')
-        res.status(200).json({message: "Producto creado"})
-    }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al crear producto"})
-    }
+        const newProduct = await Product.create({
+            Code: req.body.Code,
+            Name: req.body.Name,
+            Brand: req.body.Brand,
+            Stock: req.body.stock,
+            Price: req.body.price,
+            Image: image,
+            Category: req.body.Category,
+            StatusUuid: req.body.Status,
+            
+        });
 
-}
-export const  putProduct = async(req, res) => {
-    const pool = await conection()
-    try {
-        const image = req.file?.buffer;
-        await pool.request()
-        .input('ProductUuid', req.params.ProductUuid)
-        .input('Code', req.body.Code)
-        .input('Name', req.body.Name)
-        .input('Brand', req.body.Brand)
-        .input('stock', req.body.stock)
-        .input('price', req.body.price)
-        .input('Image', mssql.VarBinary,image)
-        .input('Category', req.body.Category)
-        .input('Status', req.body.Status)
-        .query('EXEC DA.UPDATEPRODUCT  @ProductUuid = @ProductUuid, @Code = @Code, @Name = @Name,  @Brand = @Brand, @stock = @stock, @price = @price, @Image = @Image, @Category = @Category, @Status = @Status')
-        res.status(200).json({message: "Producto actualizado"})
-    }
-    catch(error) {
-        console.error(error)
-        res.status(500).json({message: "Error al editar producto"})
+        res.status(201).json({ message: "Producto creado" });
+    } catch (error) {
+        console.error(error);
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ message: "El código de producto ya existe" });
+        }
+        res.status(500).json({ 
+            message: "Error al crear producto",
+            error: error.message 
+        });
     }
 }
 
+export const putProduct = async(req, res) => {
+    try {
+        const image = req.file?.buffer;
+        
+        const [updatedRows] = await Product.update({
+            Code: req.body.Code,
+            Name: req.body.Name,
+            Brand: req.body.Brand,
+            Stock: req.body.stock,
+            Price: req.body.price,
+            ...(image && { Image: image }), 
+            Category: req.body.Category,
+            Status: req.body.Status
+        }, {
+            where: {
+                Uuid: req.params.ProductUuid
+            }
+        });
+
+        if (updatedRows === 0) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+
+        res.status(200).json({ message: "Producto actualizado" });
+    } catch (error) {
+        console.error(error);
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({ message: "El código de producto ya existe" });
+        }
+        res.status(500).json({ message: "Error al editar producto" });
+    }
+}
 
 export const deleteProduct = async (req, res) => {
-    const pool = await conection()
-    const result =  await pool.request()
-    .input('Uuid', req.params.Uuid)
-    .query('delete from PRODUCTS where Uuid = @Uuid', {Uuid: req.params.Uuid})
-    
-    if(result.rowsAffected[0] === 0) {
-        res.status(404).json({message: "Producto no encontrado"})
+    try {
+        const deletedRows = await Product.destroy({
+            where: {
+                Uuid: req.params.Uuid
+            }
+        });
+        
+        if (deletedRows === 0) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+        
+        res.status(200).json({ message: "Producto eliminado" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al eliminar producto" });
     }
-    
-    return res.status(200).json({message: "Producto eliminado"})
 }
+
+export const getAvailableProducts = async (req, res) => {
+    try {
+      const products = await Product.findAll({
+        where: {
+          StatusUuid: 'F190BE66-3B22-4E7D-85FC-C9C79E908642',
+        },
+      });
+  
+      const transformedProducts = products.map((product) => {
+        const plainProduct = product.get({ plain: true });
+        return {
+          ...plainProduct,
+          Image: plainProduct.Image
+            ? `data:image/jpeg;base64,${Buffer.from(plainProduct.Image).toString('base64')}`
+            : null,
+        };
+      });
+  
+      res.json(transformedProducts);
+    } catch (error) {
+      console.error('Error al obtener productos con StatusUuid=F190BE66-3B22-4E7D-85FC-C9C79E908642:', error);
+      res.status(500).json({ message: 'Error al obtener los productos' });
+    }
+  };
