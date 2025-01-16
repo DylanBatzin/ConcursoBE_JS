@@ -33,10 +33,8 @@ export const getUser = async (req, res) => {
 
 export const postUser = async(req, res) => {
   try {
-      // Encriptar la contraseña
       const hashedPassword = await bcrypt.hash(req.body.PasswordHash, 10);
       
-      // Crear el usuario usando Sequelize sin especificar el UUID
       const newUser = await User.create({
           FullName: req.body.FullName,
           Email: req.body.Email,
@@ -50,7 +48,6 @@ export const postUser = async(req, res) => {
   }
   catch(error) {
       console.error(error);
-      // Si el error es por email duplicado
       if (error.name === 'SequelizeUniqueConstraintError') {
           return res.status(400).json({ message: "El email ya está registrado" });
       }
@@ -63,7 +60,6 @@ export const postUser = async(req, res) => {
         // Encriptar la contraseña
         const hashedPassword = await bcrypt.hash(req.body.PasswordHash, 10);
         
-        // Buscar y actualizar el usuario usando Sequelize
         const [updatedRows] = await User.update({
             FullName: req.body.FullName,
             Email: req.body.Email,
@@ -111,21 +107,18 @@ export const login = async (req, res) => {
     const { Email, Password } = req.body;
   
     try {
-      // Busca el usuario por email
       const user = await User.findOne({ where: { Email } });
   
       if (!user) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
   
-      // Verifica la contraseña
       const isPasswordValid = await bcrypt.compare(Password, user.PasswordHash);
   
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Contraseña incorrecta" });
       }
   
-      // Genera el token JWT
       const token = jwt.sign(
         { email: user.Email, role: user.Rol },
         SECRET_KEY,
@@ -147,11 +140,10 @@ export const getUserByEmail = async (req, res) => {
     }
   
     try {
-      // Busca el usuario por email usando Sequelize
       const user = await User.findOne({ where: { Email } });
   
       if (user) {
-        res.json(user); // Devuelve el usuario si existe
+        res.json(user); 
       } else {
         res.status(404).json({ message: "Usuario no encontrado" });
       }
